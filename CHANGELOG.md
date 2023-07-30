@@ -1,6 +1,32 @@
 
 # ntgrrc (Netgear Remote Control) CHANGELOG
 
+## v0.9.1
+
+* Change "port status" to "port settings" and change JSON output to better indicate origin (#41)
+* Check if port name parameter is passed before modifying port name (#39)
+
+----
+
+## v0.9.0
+
+* Allow ntgrrc to manipulate port settings (#38)
+
+----
+
+## v0.8.4
+
+* Add port name field to output (#35)
+* Fix port indexing when a port name was also defined (#34)
+
+----
+
+## v0.8.3
+
+* update permissions for creation of token directory (#30)
+
+----
+
 ## v0.8.2
 
 * Use "-d" to specify a directory to store the login token (#29)

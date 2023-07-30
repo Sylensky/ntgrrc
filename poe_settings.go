@@ -3,14 +3,16 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 type PoePortSetting struct {
 	PortIndex    int8
+	PortName     string
 	PortPwr      bool
 	PwrMode      string
 	PortPrio     string
@@ -33,7 +35,7 @@ func (poe *PoeShowSettingsCommand) Run(args *GlobalOptions) error {
 		return errors.New("no content. please, (re-)login first")
 	}
 	var settings []PoePortSetting
-	settings, err = findPortSettingsInHtml(strings.NewReader(settingsPage))
+	settings, err = findPoeSettingsInHtml(strings.NewReader(settingsPage))
 	if err != nil {
 		return err
 	}
@@ -42,11 +44,12 @@ func (poe *PoeShowSettingsCommand) Run(args *GlobalOptions) error {
 }
 
 func prettyPrintSettings(format OutputFormat, settings []PoePortSetting) {
-	var header = []string{"Port ID", "Port Power", "Mode", "Priority", "Limit Type", "Limit (W)", "Type", "Longer Detection Time"}
+	var header = []string{"Port ID", "Port Name", "Port Power", "Mode", "Priority", "Limit Type", "Limit (W)", "Type", "Longer Detection Time"}
 	var content [][]string
 	for _, setting := range settings {
 		var row []string
 		row = append(row, fmt.Sprintf("%d", setting.PortIndex))
+		row = append(row, setting.PortName)
 		row = append(row, asTextPortPower(setting.PortPwr))
 		row = append(row, bidiMapLookup(setting.PwrMode, pwrModeMap))
 		row = append(row, bidiMapLookup(setting.PortPrio, portPrioMap))
@@ -60,7 +63,7 @@ func prettyPrintSettings(format OutputFormat, settings []PoePortSetting) {
 	case MarkdownFormat:
 		printMarkdownTable(header, content)
 	case JsonFormat:
-		printJsonDataTable("settings", header, content)
+		printJsonDataTable("poe_settings", header, content)
 	default:
 		panic("not implemented format: " + format)
 	}
@@ -78,7 +81,7 @@ func requestPoePortConfigPage(args *GlobalOptions, host string) (string, error) 
 	return requestPage(args, host, url)
 }
 
-func findPortSettingsInHtml(reader io.Reader) ([]PoePortSetting, error) {
+func findPoeSettingsInHtml(reader io.Reader) ([]PoePortSetting, error) {
 	doc, err := goquery.NewDocumentFromReader(reader)
 	if err != nil {
 		return nil, err
@@ -88,9 +91,11 @@ func findPortSettingsInHtml(reader io.Reader) ([]PoePortSetting, error) {
 	doc.Find("li.poePortSettingListItem").Each(func(i int, s *goquery.Selection) {
 		config := PoePortSetting{}
 
-		id := s.Find("span.poe-port-index span").Text()
+		id, _ := s.Find("input[type=hidden].port").Attr("value")
 		var id64, _ = strconv.ParseInt(id, 10, 8)
 		config.PortIndex = int8(id64)
+
+		config.PortName, _ = s.Find("input[type=hidden].portName").Attr("value")
 
 		portWr, exists := s.Find("input#hidPortPwr").Attr("value")
 		config.PortPwr = exists && portWr == "1"
